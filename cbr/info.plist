@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>bundleid</key>
+	<string>com.jastkand.cbrRate</string>
+	<key>category</key>
+	<string>Productivity</string>
+	<key>connections</key>
+	<dict>
+		<key>63F60794-BB56-4415-9372-BAF974C3A7E1</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>5273E5D3-933E-4A9D-95DA-03EAC4F148B5</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+	</dict>
+	<key>createdby</key>
+	<string>Andrey Krivko</string>
+	<key>description</key>
+	<string></string>
+	<key>disabled</key>
+	<false/>
+	<key>name</key>
+	<string>Курс доллара по Банку России</string>
+	<key>objects</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>36</integer>
+				<key>keyword</key>
+				<string>cbr</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<false/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>Запрос данных ...</string>
+				<key>script</key>
+				<string>#!/usr/bin/env ruby
+
+require 'net/http'
+require 'uri'
+require 'time'
+
+def fetch_cbr(date = nil)
+  date = Time.now if date.empty?
+  params = {
+    date_req: date.strftime("%d/%m/%Y")
+  }
+
+  uri = URI.parse('https://www.cbr.ru/scripts/XML_daily.asp')
+  uri.query = URI.encode_www_form(params)
+
+  request = Net::HTTP::Get.new(uri)
+
+  Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+    http.request(request)
+  end
+end
+
+def parse_currencies(xml)
+  encoded = xml.force_encoding('cp1251').encode('utf-8', undef: :replace)
+  splitted = encoded.split('&gt;&lt;Valute')
+  currencies = []
+  splitted.each do |substr|
+    num_code = substr.scan(%r{&lt;NumCode&gt;(.*)&lt;/NumCode&gt;})[0]
+    name = substr.scan(%r{&lt;Name&gt;(.*)&lt;/Name&gt;})[0]
+    value = substr.scan(%r{&lt;Value&gt;(.*)&lt;/Value&gt;})[0]
+    if num_code &amp;&amp; name &amp;&amp; value
+      currencies &lt;&lt; { code: num_code[0], name: name[0], value: value[0] }
+    end
+  end
+  currencies
+end
+
+def print_currency_rate(date)
+  response = fetch_cbr(date)
+
+  if response.code.to_i == 200
+    currencies = parse_currencies(response.body)
+    currency = currencies.find { |c| c[:code] == '840' }
+    if currency
+      { title: "#{currency[:name]}: #{currency[:value]}", arg: currency[:value] }
+    else
+      { title: 'Валюта не найдена' }
+    end
+  else
+    { title: 'Ошибка при получении данных' }
+  end  
+end
+
+result = print_currency_rate(ARGV[0])
+
+print %{
+  {
+    "items": [
+      {
+        "title": "#{result[:title]}",
+        "arg": "#{result[:arg]}"
+      }
+    ]
+  }
+}
+</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>subtext</key>
+				<string></string>
+				<key>title</key>
+				<string>Курс доллара по Банку России</string>
+				<key>type</key>
+				<integer>2</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>63F60794-BB56-4415-9372-BAF974C3A7E1</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>autopaste</key>
+				<false/>
+				<key>clipboardtext</key>
+				<string>{query}</string>
+				<key>ignoredynamicplaceholders</key>
+				<false/>
+				<key>transient</key>
+				<false/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.output.clipboard</string>
+			<key>uid</key>
+			<string>5273E5D3-933E-4A9D-95DA-03EAC4F148B5</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+	</array>
+	<key>readme</key>
+	<string>This workflow gives you in-line results for currency date using the CBR data</string>
+	<key>uidata</key>
+	<dict>
+		<key>5273E5D3-933E-4A9D-95DA-03EAC4F148B5</key>
+		<dict>
+			<key>xpos</key>
+			<integer>270</integer>
+			<key>ypos</key>
+			<integer>95</integer>
+		</dict>
+		<key>63F60794-BB56-4415-9372-BAF974C3A7E1</key>
+		<dict>
+			<key>xpos</key>
+			<integer>50</integer>
+			<key>ypos</key>
+			<integer>50</integer>
+		</dict>
+	</dict>
+	<key>variablesdontexport</key>
+	<array/>
+	<key>version</key>
+	<string>1.0</string>
+	<key>webaddress</key>
+	<string>https://krivko.me</string>
+</dict>
+</plist>
